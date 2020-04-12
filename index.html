@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>My task</title>
+    <script type="text/javascript" src="../libs/jquery-1.9.0.js"></script>
+    <script type="text/javascript" src="../libs/three.js"></script>
+    <script type="text/javascript" src="../libs/stats.js"></script>
+    <script type="text/javascript" src="../libs/dat.gui.js"></script>
+    <script type="text/javascript" src="../libs/OrbitControls.js"></script>
+    <script type="text/javascript" src="../libs/TrackballControls.js"></script>
+    <script type="text/javascript" src="./libs/DragControls.js"></script>
+
+    <script type="text/javascript" src='./libs/d3.js'></script>
+    <script type="text/javascript" src='./libs/CSS2DRenderer.js'></script>
+    <script type="text/javascript" src='./libs/threex.windowresize.js'></script>
+
+    <script type="text/javascript" src='./libs/threex.solidwireframe.js'></script>
+    <script type="text/javascript" src='./libs/threex.atmospherematerial.js'></script>
+    <script type="text/javascript" src='./libs/threex.dilategeometry.js'></script>
+    <script type="text/javascript" src="./libs/threex.atmospherematerialdatgui.js"></script>
+    <script type="text/javascript" src="./libs/threex.geometricglowmesh.js"></script>
+
+    <script type="text/javascript" src="./libs/Projector.js"></script>
+    <script type="text/javascript" src="./libs/threex.objcoord.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .label {
+            color: #FFF;
+            font-family: sans-serif;
+            padding: 2px;
+            max-width: 100px;
+            margin-top: 2em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="Stats-output">
+    </div>
+    <div id="WebGL-output">
+    </div>
+    <script type="module">
+        import datas from './data2.js';
+        // import DragControl from './libs/DragControls.js';
+
+        let fontloader = new THREE.FontLoader();
+        let textLoader = new THREE.TextureLoader();
+        let windowInnerWidth = window.innerWidth,
+            windowInnerHeight = window.innerHeight;
+
+        function randomNum(min = 0, max = 20) {
+            return Math.floor(Math.random()*(max-min+1)+min);
+        }
+
+        // 创建力学模拟
+        const root = d3.hierarchy(datas);
+        const data = root.descendants();
+        const links = root.links();
+
+        const simulation = d3.forceSimulation(data)
+            .force("link", d3.forceLink(links).id(d => d.name))
+            .force("charge", d3.forceManyBody())
+            .force("center",d3.forceCenter())
+            .on("tick", ticked);
+
+        data.forEach(item => {
+            item.z = randomNum(-100, 100);
+        });
+
+        console.log(data);
+        console.log(links);
+
+        function initStats() {
+            var stats = new Stats();
+
+            stats.setMode(0); // 0: fps, 1: ms
+
+            stats.domElement.style.position = 'absolute';
+            stats.domElement.style.left = '0px';
+            stats.domElement.style.top = '0px';
+
+            document.getElementById("Stats-output").appendChild(stats.domElement);
+
+            return stats;
+        }
+
+        function createLabel(data) {
+            let div = document.createElement('div');
+            div.className = 'label';
+            div.textContent = data.data.name;
+            div.style.marginTop = '-2em';
+
+            let label = new THREE.CSS2DObject(div);
+            // label.position.set(data.x, data.y, data.z || 0);
+
+            data.label = label;
+
+            return label;
+        }
+
+        function getYellowSphere(data, scene) {
+            let geometry = new THREE.SphereGeometry(randomNum(12, 15), 15, 15);
+            let material = new THREE.MeshPhongMaterial({
+                wireframe: true,
+                transparent: true,
+                emissive: 0xD7A455,
+                color: 0xD7A455,
+            })
+            let fragilityMesh = new THREE.Mesh(geometry, material);
+            fragilityMesh.position.set(data.x, data.y, data.z);
+
+            fragilityMesh.add(createLabel(data));
+
+            scene.add(fragilityMesh);
+
+            return fragilityMesh;
+        }
+
+        function getBlueSphere(data, scene) {
+
+            let geometry = new THREE.SphereGeometry(randomNum(5, 15), 16, 16);
+            let material = new THREE.MeshLambertMaterial({
+                wireframe: true,
+                emissive: new THREE.Color(0x2C6DEA),
+                transparent: true
+            });
+            let mesh = new THREE.Mesh(geometry, material);
+
+            mesh.position.set(data.x, data.y, data.z);
+            scene.add(mesh);
+
+            let glowMesh = new THREEx.GeometricGlowMesh(mesh);
+            mesh.add(glowMesh.object3d);
+
+            let insideUniforms = glowMesh.insideMesh.material.uniforms;
+            insideUniforms.glowColor.value.set(0x2C6DEA);
+            let outsideUniforms = glowMesh.outsideMesh.material.uniforms;
+            outsideUniforms.glowColor.value.set(0x2C6DEA);
+
+            mesh.add(createLabel(data));
+
+            return mesh;
+        }
+
+        function getDarkSphere(data, scene) {
+            let sphereGeometry = new THREE.SphereGeometry(randomNum(2, 5), 15, 15);
+            let sphereMaterial = new THREE.MeshLambertMaterial({
+                color: 0x1c256f
+            });
+
+            let sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+
+            sphere.position.set(data.x, data.y, data.z);
+
+            scene.add(sphere);
+
+            return sphere;
+        }
+
+        function getLine(geometry, scene) {
+            let line = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({
+                color: 0x2C3158,
+                linewidth: 1
+            }));
+
+            scene.add(line);
+        }
+
+        function init() {
+            var stats = initStats();
+
+            // 实例化场景
+            var scene = new THREE.Scene();
+            // scene.fog = new THREE.FogExp2(0x0d0b31, 0.002);
+
+            var controls = new function () {
+                this.rotationSpeed = 0;
+                this.cameraZ = 100;
+                this.ambientLightColor = '#ffffff';
+            };
+
+            // 实例渲染器
+            var renderer = new THREE.WebGLRenderer({ antialias: true });
+
+            // 不自动排序
+            renderer.sortObjects = false;
+            renderer.setClearColor(0x0D0B31);
+            renderer.setSize(windowInnerWidth, windowInnerHeight);
+
+            document.getElementById("WebGL-output").appendChild(renderer.domElement);
+
+            // 实例相机
+            var camera = new THREE.PerspectiveCamera(45, windowInnerWidth / windowInnerHeight, 1, 1000);
+
+            camera.position.x = 0;
+            camera.position.y = 0;
+            camera.position.z = 500;
+            scene.add(camera);
+
+            // 环境光
+            var ambientLight = new THREE.AmbientLight(0xffffff);
+            scene.add(ambientLight);
+
+            // 点光源
+            var light = new THREE.PointLight(0x2C6DEA);
+            light.position.set(0, 0, 0);
+            scene.add(light);
+
+            // 视口变化事件
+            THREEx.WindowResize(renderer, camera);
+
+            var lineGeometry = new THREE.Geometry();
+
+            data.forEach(item => {
+                switch (item.data.status) {
+
+                    case 1:
+                        let fragilityMesh = getYellowSphere(item, scene);
+                        item.body = fragilityMesh;
+                        fragilityMesh.data = item;
+                        break;
+
+                    case 2:
+                        let blueSphere = getBlueSphere(item, scene);
+                        item.body = blueSphere;
+                        blueSphere.data = item;
+                        break;
+
+                    case 3:
+                        let darkPhere = getDarkSphere(item, scene);
+                        item.body = darkPhere;
+                        darkPhere.data = item;
+                        break;
+                    default:
+                }
+            });
+
+            links.forEach((value => {
+                let material = new THREE.LineBasicMaterial({ color: 0x2C3158, linewidth: 1 });
+                let geometry = new THREE.Geometry();
+
+                let sourcePos = value.source?.body?.position || new THREE.Vector3(value.source.x, value.source.y, 0),
+                    targetPos = value.target?.body?.position || new THREE.Vector3(value.target.x, value.target.y, 0);
+
+                geometry.vertices.push(sourcePos);
+                geometry.vertices.push(targetPos);
+                let line = new THREE.Line(geometry, material);
+                scene.add(line);
+                value.body = line;
+            }));
+
+            // 标签显示
+            let labelRenderer = new THREE.CSS2DRenderer();
+            labelRenderer.setSize(windowInnerWidth, windowInnerHeight);
+            labelRenderer.domElement.style.position = 'absolute';
+            labelRenderer.domElement.style.top = 0;
+            document.body.appendChild(labelRenderer.domElement);
+
+            // 轨道控制器
+            let trackballControls = new THREE.TrackballControls(camera, labelRenderer.domElement);
+            trackballControls.rotateSpeed = 1.0;
+            trackballControls.zoomSpeed = 1.0;
+            trackballControls.panSpeed = 0.8;
+            
+            trackballControls.keys = [65, 83, 68];
+
+            // GUI
+            var gui = new dat.GUI();
+          
+            function render() {
+                stats.update();
+                trackballControls.update();
+
+                requestAnimationFrame(render);
+                renderer.render(scene, camera);
+                labelRenderer.render(scene, camera);
+            }
+
+            render();
+        }
+
+        window.onload = init;
+
+        function ticked() {
+            data.forEach(value => {
+                value.body && value.body.position.set(value.x, value.y, value.z);
+            });
+
+            links.forEach(value => {
+                if (value.body) {
+                    value.body.geometry.verticesNeedUpdate = true;
+                    value.body.geometry.vertices[0] = new THREE.Vector3(value.source.x, value.source.y, value.source.z);
+                    value.body.geometry.vertices[1] = new THREE.Vector3(value.target.x, value.target.y, value.target.z);
+                }
+            });
+        };
+    </script>
+</body>
+
+</html>

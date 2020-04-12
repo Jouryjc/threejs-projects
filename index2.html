@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>My task</title>
+    <script type="text/javascript" src="./libs/jquery-1.9.0.js"></script>
+    <script type="text/javascript" src="./libs/three.js"></script>
+    <script type="text/javascript" src="./libs/stats.js"></script>
+    <script type="text/javascript" src="./libs/dat.gui.js"></script>
+    <script type="text/javascript" src="./libs/OrbitControls.js"></script>
+
+    <script type="text/javascript" src='./libs/threex.windowresize.js'></script>
+
+    <script type="text/javascript" src='./libs/threex.solidwireframe.js'></script>
+    <script type="text/javascript" src='./libs/threex.atmospherematerial.js'></script>
+    <script type="text/javascript" src='./libs/threex.dilategeometry.js'></script>
+    <script type="text/javascript" src="./libs/threex.atmospherematerialdatgui.js"></script>
+    <script type="text/javascript" src="./libs/threex.geometricglowmesh.js"></script>
+
+    <script type="text/javascript" src="./libs/Projector.js"></script>
+    <script type="text/javascript" src="./libs/threex.objcoord.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .text {
+            position: absolute;
+            color: #fff;
+        }
+
+        .text p {
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="Stats-output">
+    </div>
+    <div id="WebGL-output">
+    </div>
+    <div class="text text--nanjing">
+        <p>南京分支</p>
+        <p>（168）</p>
+    </div>
+    <div class="text text--shenzhen">
+        <p>深圳分支</p>
+        <p>（888）</p>
+    </div>
+
+    <script type="text/javascript">
+
+        let $shenzhenText = $('.text--shenzhen'),
+            $nanjingText = $('.text--nanjing');
+
+        let windowInnerWidth = window.innerWidth,
+            windowInnerHeight = window.innerHeight;
+
+        // once everything is loaded, we run our Three.js stuff.
+        function init() {
+
+            var stats = initStats();
+
+            // create a scene, that will hold all our elements such as objects, cameras and lights.
+            var scene = new THREE.Scene();
+
+            // create a camera, which defines where we're looking at.
+            var camera = new THREE.PerspectiveCamera(45, windowInnerWidth / windowInnerHeight, 1, 1000);
+
+            // create a render and set the size
+            var renderer = new THREE.WebGLRenderer();
+
+            renderer.sortObjects = false;
+
+            renderer.setClearColor(new THREE.Color(0x0D0B31));
+            renderer.setSize(windowInnerWidth, windowInnerHeight);
+            renderer.shadowMap.enabled = true;
+
+            // position and point the camera to the center of the scene
+            camera.position.x = 0;
+            camera.position.y = 0;
+            camera.position.z = 20;
+            camera.lookAt(scene.position);
+
+            // add the output of the renderer to the html element
+            document.getElementById("WebGL-output").appendChild(renderer.domElement);
+
+            var controls = new function () {
+                this.rotationSpeed = 0;
+                this.numberOfObjects = scene.children.length;
+                this.color = 0x2C6DEA;
+                this.ambientLightColor = 0xfffffff;
+
+                this.outputObjects = function () {
+                    console.log(scene.children);
+                }
+            };
+
+            // 环境光
+            var ambientLight = new THREE.AmbientLight(0x2C6DEA); // soft white light
+            scene.add(ambientLight);
+
+            // 点光源
+            var light = new THREE.PointLight(0x2C6DEA);
+            light.position.set(0, 0, 0);
+            scene.add(light);
+
+            THREEx.WindowResize(renderer, camera);
+
+            // 轨道控制器
+            var orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
+            orbitControls.update();
+
+            var lineGeometry = new THREE.Geometry();
+
+            let track = new THREE.Mesh(new THREE.RingGeometry(4.9, 5, 64),
+                new THREE.MeshBasicMaterial({ color: 0x888888, side: THREE.DoubleSide })
+            );
+            track.rotation.x = Math.PI / 2.2;
+            scene.add(track);
+
+            let track2 = new THREE.Mesh(new THREE.RingGeometry(7.4, 7.5, 64),
+                new THREE.MeshBasicMaterial({ color: 0x888888, side: THREE.DoubleSide })
+            );
+            track2.rotation.x = Math.PI / 2.2;
+            scene.add(track2);
+
+            let track3 = new THREE.Mesh(new THREE.RingGeometry(9.0, 9.1, 64),
+                new THREE.MeshBasicMaterial({ color: 0x888888, side: THREE.DoubleSide })
+            );
+            track3.rotation.x = Math.PI / 2.2;
+            scene.add(track3);
+
+            /**
+             * 蓝色发光球体
+             */
+            /*  for (let i = 1; i < 11; i++) {
+                 let sphereSize = Math.random();
+ 
+                 let geometry = new THREE.SphereGeometry(sphereSize, 16, 16);
+                 let material = new THREE.MeshLambertMaterial({
+                     wireframe: true,
+                     emissive: new THREE.Color(0x2C6DEA)
+                 });
+                 let mesh = new THREE.Mesh(geometry, material);
+ 
+                 mesh.position.x = Math.random() * 10 * 2 - 10;
+                 mesh.position.y = Math.random() * 5 * 2 - 5;
+                 mesh.position.z = Math.random();
+ 
+                 scene.add(mesh);
+ 
+                 let glowMesh = new THREEx.GeometricGlowMesh(mesh);
+                 mesh.add(glowMesh.object3d);
+ 
+                 let insideUniforms = glowMesh.insideMesh.material.uniforms;
+                 insideUniforms.glowColor.value.set(0x2C6DEA);
+                 let outsideUniforms = glowMesh.outsideMesh.material.uniforms;
+                 outsideUniforms.glowColor.value.set(0x2C6DEA);
+ 
+                 let position = THREEx.ObjCoord.cssPosition(mesh, camera, renderer);
+                 $nanjingText.css({
+                     top: position.y - $nanjingText.height() / 2 + 80,
+                     left: position.x - $nanjingText.width() / 2
+                 });
+ 
+                 lineGeometry.vertices.push(mesh.position);
+             } */
+
+            /**
+             * 连线 
+             */
+            var line = new THREE.LineSegments(lineGeometry, new THREE.LineBasicMaterial({
+                color: 0x2C3158,
+                linewidth: 1
+            }));
+
+            scene.add(line);
+
+            // GUI
+            var gui = new dat.GUI();
+            gui.addColor(controls, 'color');
+            gui.add(controls, 'rotationSpeed', 0, 0.5);
+            gui.addColor(controls, 'ambientLightColor').listen().onChange(render);
+
+            /*   new THREEx.addAtmosphereMaterial2DatGui(glowMesh.insideMesh.material, gui);
+              new THREEx.addAtmosphereMaterial2DatGui(glowMesh.outsideMesh.material, gui); */
+
+            render();
+
+            function render() {
+                stats.update();
+                orbitControls.update();
+
+                scene.traverse(function (e) {
+                    if (e instanceof THREE.Mesh) {
+
+                        e.rotation.x += controls.rotationSpeed;
+                        e.rotation.y += controls.rotationSpeed;
+                        e.rotation.z += controls.rotationSpeed;
+                    }
+                });
+
+                requestAnimationFrame(render);
+                renderer.render(scene, camera);
+            }
+
+            function initStats() {
+
+                var stats = new Stats();
+
+                stats.setMode(0); // 0: fps, 1: ms
+
+                // Align top-left
+                stats.domElement.style.position = 'absolute';
+                stats.domElement.style.left = '0px';
+                stats.domElement.style.top = '0px';
+
+                document.getElementById("Stats-output").appendChild(stats.domElement);
+
+                return stats;
+            }
+        }
+
+        window.onload = init;
+
+    </script>
+</body>
+
+</html>
