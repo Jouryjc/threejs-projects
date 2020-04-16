@@ -9,7 +9,25 @@
 </head>
 
 <body>
+    <div id="Stats-output">
+    </div>
     <script>
+        function initStats() {
+            var stats = new Stats();
+
+            stats.setMode(0); // 0: fps, 1: ms
+
+            stats.domElement.style.position = 'absolute';
+            stats.domElement.style.left = '0px';
+            stats.domElement.style.top = '0px';
+
+            document.getElementById("Stats-output").appendChild(stats.domElement);
+
+            return stats;
+        }
+
+        var stats = initStats();
+
         var controls = new function () {
             this.innerColor = '#2c68be';
             this.outerColor = '#0621e6';
@@ -49,59 +67,64 @@
         scene.add(directionalLight);
 
         // Sphere Wireframe Inner
+        var sphereWireframeInnerMaterial = new THREE.MeshLambertMaterial({
+            color: controls.innerColor,
+            ambient: controls.innerColor,
+            wireframe: true,
+            transparent: true,
+            //alphaMap: THREE.ImageUtils.loadTexture( 'javascripts/alphamap.jpg' ),
+            shininess: 0
+        });
         var sphereWireframeInner = new THREE.Mesh(
             new THREE.IcosahedronGeometry(innerSize, 2),
-            new THREE.MeshLambertMaterial({
-                color: controls.innerColor,
-                ambient: controls.innerColor,
-                wireframe: true,
-                transparent: true,
-                //alphaMap: THREE.ImageUtils.loadTexture( 'javascripts/alphamap.jpg' ),
-                shininess: 0
-            })
+            sphereWireframeInnerMaterial
         );
         scene.add(sphereWireframeInner);
 
         // Sphere Wireframe Outer
+        var sphereWireframeOuterMaterial = new THREE.MeshLambertMaterial({
+            color: controls.outerColor,
+            ambient: controls.outerColor,
+            wireframe: true,
+            transparent: true,
+            //alphaMap: THREE.ImageUtils.loadTexture( 'javascripts/alphamap.jpg' ),
+            shininess: 0
+        });
         var sphereWireframeOuter = new THREE.Mesh(
             new THREE.IcosahedronGeometry(outerSize, 3),
-            new THREE.MeshLambertMaterial({
-                color: controls.outerColor,
-                ambient: controls.outerColor,
-                wireframe: true,
-                transparent: true,
-                //alphaMap: THREE.ImageUtils.loadTexture( 'javascripts/alphamap.jpg' ),
-                shininess: 0
-            })
+            sphereWireframeOuterMaterial
         );
+
         scene.add(sphereWireframeOuter);
 
 
         // Sphere Glass Inner
+        var sphereGlassInnerMaterial = new THREE.MeshPhongMaterial({
+            color: controls.innerColor,
+            ambient: controls.innerColor,
+            transparent: true,
+            shininess: 25,
+            //alphaMap: THREE.ImageUtils.loadTexture( 'javascripts/twirlalphamap.jpg' ),
+            opacity: 0.3,
+        });
         var sphereGlassInner = new THREE.Mesh(
             new THREE.SphereGeometry(innerSize, 32, 32),
-            new THREE.MeshPhongMaterial({
-                color: controls.innerColor,
-                ambient: controls.innerColor,
-                transparent: true,
-                shininess: 25,
-                //alphaMap: THREE.ImageUtils.loadTexture( 'javascripts/twirlalphamap.jpg' ),
-                opacity: 0.3,
-            })
+            sphereGlassInnerMaterial
         );
         scene.add(sphereGlassInner);
 
         // Sphere Glass Outer
+        var sphereGlassOuterMaterial = new THREE.MeshPhongMaterial({
+            color: controls.outerColor,
+            ambient: controls.outerColor,
+            transparent: true,
+            shininess: 25,
+            //alphaMap: THREE.ImageUtils.loadTexture( 'javascripts/twirlalphamap.jpg' ),
+            opacity: 0.3,
+        });
         var sphereGlassOuter = new THREE.Mesh(
             new THREE.SphereGeometry(outerSize, 32, 32),
-            new THREE.MeshPhongMaterial({
-                color: controls.outerColor,
-                ambient: controls.outerColor,
-                transparent: true,
-                shininess: 25,
-                //alphaMap: THREE.ImageUtils.loadTexture( 'javascripts/twirlalphamap.jpg' ),
-                opacity: 0.3,
-            })
+            sphereGlassOuterMaterial
         );
         //scene.add(sphereGlassOuter);
 
@@ -127,14 +150,13 @@
 
         }
 
-
-        var particlesOuter = new THREE.PointCloud(geometry, new THREE.PointCloudMaterial({
+        var particlesOuterMaterial = new THREE.PointCloudMaterial({
             size: 0.1,
             color: controls.outerColor,
             //map: THREE.ImageUtils.loadTexture( 'javascripts/particletextureshaded.png' ),
             transparent: true,
-        })
-        );
+        });
+        var particlesOuter = new THREE.PointCloud(geometry, particlesOuterMaterial);
         scene.add(particlesOuter);
 
         // Particles Inner
@@ -160,13 +182,13 @@
         }
 
 
-        var particlesInner = new THREE.PointCloud(geometry, new THREE.PointCloudMaterial({
+        var particlesInnerMaterial = new THREE.PointCloudMaterial({
             size: 0.1,
             color: controls.innerColor,
             //map: THREE.ImageUtils.loadTexture( 'javascripts/particletextureshaded.png' ),
             transparent: true,
-        })
-        );
+        });
+        var particlesInner = new THREE.PointCloud(geometry, particlesInnerMaterial);
         scene.add(particlesInner);
 
         // Starfield
@@ -194,20 +216,35 @@
         var time = new THREE.Clock();
 
         var gui = new dat.GUI();
-        // gui.addColor(controls, 'innerColor').onChange((e) => {
-        //     controls.innerColor = e;
-        // });
-        // gui.addColor(controls, 'outerColor').onChange((e) => {
-        //     controls.outerColor = e;
-        // });
+        gui.addColor(controls, 'innerColor').onChange((e) => {
+            sphereWireframeInnerMaterial.color = new THREE.Color(e);
+            sphereWireframeInnerMaterial.ambient = new THREE.Color(e);
+
+            sphereGlassInnerMaterial.color = new THREE.Color(e);
+            sphereGlassInnerMaterial.ambient = new THREE.Color(e);
+
+            particlesInnerMaterial.color = new THREE.Color(e);
+        });
+
+        gui.addColor(controls, 'outerColor').onChange((e) => {
+            sphereWireframeOuterMaterial.color = new THREE.Color(e);
+            sphereWireframeOuterMaterial.ambient = new THREE.Color(e);
+
+            sphereGlassOuterMaterial.color = new THREE.Color(e);
+            sphereGlassOuterMaterial.ambient = new THREE.Color(e);
+
+            particlesOuterMaterial.color = new THREE.Color(e);
+        });
+
         gui.addColor(controls, 'ambientLight').onChange((e) => {
-            light.color = e;
+            light.color = new THREE.Color(e);
         });
         gui.addColor(controls, 'directionalLight').onChange((e) => {
-            directionalLight.color = e;
+            directionalLight.color = new THREE.Color(e);
         });
 
         var render = function () {
+            stats.update();
             //camera.position.x = mouseX * 0.05;
             //camera.position.y = -mouseY * 0.05;
             camera.lookAt(scene.position);
