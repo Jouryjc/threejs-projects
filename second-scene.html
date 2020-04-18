@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>My task</title>
+    <script type="text/javascript" src="./libs/jquery-1.9.0.js"></script>
+    <script type="text/javascript" src="./libs/three.js"></script>
+    <script type="text/javascript" src="./libs/stats.js"></script>
+    <script type="text/javascript" src="./libs/dat.gui.js"></script>
+    <script type="text/javascript" src="./libs/OrbitControls.js"></script>
+
+    <script type="text/javascript" src='./libs/threex.windowresize.js'></script>
+
+    <script type="text/javascript" src='./libs/threex.solidwireframe.js'></script>
+    <script type="text/javascript" src='./libs/threex.atmospherematerial.js'></script>
+    <script type="text/javascript" src='./libs/threex.dilategeometry.js'></script>
+    <script type="text/javascript" src="./libs/threex.atmospherematerialdatgui.js"></script>
+    <script type="text/javascript" src="./libs/threex.geometricglowmesh.js"></script>
+
+    <script type="text/javascript" src="./libs/Projector.js"></script>
+    <script type="text/javascript" src="./libs/threex.objcoord.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .text {
+            position: absolute;
+            color: #fff;
+        }
+
+        .text p {
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="Stats-output">
+    </div>
+    <div id="WebGL-output">
+    </div>
+
+    <script type="module">
+        import data from './data2.js';
+        import { getNbSphere } from './sphere/index.js';
+
+        let windowInnerWidth = window.innerWidth,
+            windowInnerHeight = window.innerHeight;
+
+        function randomNum(min = 0, max = 20) {
+            return Math.floor(Math.random() * (max - min + 1) + min);
+        }
+
+        function getYellowSphere(scene) {
+            let geometry = new THREE.SphereGeometry(1.2, 15, 15);
+            let material = new THREE.MeshPhongMaterial({
+                wireframe: true,
+                transparent: true,
+                emissive: 0xD7A455,
+                color: 0xD7A455,
+            })
+            let fragilityMesh = new THREE.Mesh(geometry, material);
+
+            scene.add(fragilityMesh);
+
+            return fragilityMesh;
+        }
+
+        function getBlueSphere(scene) {
+            let geometry = new THREE.SphereGeometry(0.5, 32, 32);
+            let material = new THREE.MeshLambertMaterial({
+                wireframe: true,
+                emissive: new THREE.Color(0x2C6DEA),
+            });
+            let mesh = new THREE.Mesh(geometry, material);
+
+            scene.add(mesh);
+
+            return mesh;
+        }
+
+        function getDarkSphere(scene) {
+            let sphereGeometry = new THREE.SphereGeometry(0.3, 15, 15);
+            let sphereMaterial = new THREE.MeshLambertMaterial({
+                color: 0x1c256f
+            });
+
+            let sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+
+            scene.add(sphere);
+
+            return sphere;
+        }
+
+        /**
+         * 画贝塞尔曲线函数
+         * @param {Object} scene - 场景
+         * @param {Object} parentSphere - 父元素球体
+         * @param {Object} childSphere - 子元素球体
+         */
+        function getCubicBezierLine (scene, parentSphere, childSphere) {
+            let middle = [
+                (parentSphere.position.x + childSphere.position.x)/2,
+                (parentSphere.position.y + childSphere.position.y)/2,
+                (parentSphere.position.z + childSphere.position.z)/2
+            ]
+            let curve = new THREE.CubicBezierCurve3(
+                parentSphere.position,
+                new THREE.Vector3((parentSphere.position.x + childSphere.position.x)/2, parentSphere.position.y , childSphere.position.z),
+                new THREE.Vector3(...middle),
+                childSphere.position
+            );
+            let points = curve.getPoints( 50 );
+            let geometry = new THREE.BufferGeometry().setFromPoints( points );
+
+            let material = new THREE.LineBasicMaterial({
+                color: 0x0621e6,
+                linewidth: 1
+            });
+            let sphereMaterial = new THREE.MeshLambertMaterial({
+                color: 0x0621e6
+            });
+
+            let line = new THREE.Line(geometry, material);
+            scene.add(line);
+        }
+
+        function init() {
+            var stats = initStats();
+            var scene = new THREE.Scene();
+            var camera = new THREE.PerspectiveCamera(45, windowInnerWidth / windowInnerHeight, 1, 1000);
+            var renderer = new THREE.WebGLRenderer({ antialias: true });
+
+            renderer.sortObjects = false;
+
+            renderer.setClearColor(new THREE.Color(0x0D0B31));
+            renderer.setSize(windowInnerWidth, windowInnerHeight);
+            renderer.shadowMap.enabled = true;
+
+            camera.position.x = 0;
+            camera.position.y = 0;
+            camera.position.z = 22;
+            camera.lookAt(scene.position);
+
+            // add the output of the renderer to the html element
+            document.getElementById("WebGL-output").appendChild(renderer.domElement);
+
+            var controls = new function () {
+                this.ambientLight = 0x062ee8;
+                this.sphereRotation = 1.9;
+            };
+
+
+            // var axesHelper = new THREE.AxesHelper( 10 );
+            // scene.add( axesHelper );
+
+            // 环境光
+            var ambientLight = new THREE.AmbientLight(controls.ambientLight); // soft white light
+            scene.add(ambientLight);
+
+            THREEx.WindowResize(renderer, camera);
+
+            // 轨道控制器
+            var orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
+            orbitControls.update();
+
+            function getTrack(distance, scene, visible = true) {
+                let track = new THREE.Mesh(
+                    new THREE.RingGeometry(distance - 0.02, distance + 0.02, 64, 1),
+                    new THREE.MeshBasicMaterial({ color: 0x888888, side: THREE.DoubleSide })
+                );
+                track.visible = visible;
+
+                scene.add(track);
+                return track;
+            }
+
+            let distances = [{
+                x: 5,
+                z: -2
+            }, {
+                x: 8,
+                z: -3
+            }, {
+                x: 11,
+                z: -4
+            }];
+
+            distances.forEach(item => {
+                let track = getTrack(item.x, scene);
+                track.position.z = item.z;
+                item.radius = track.geometry.parameters.innerRadius;
+            });
+
+
+            function randomPostion () {
+
+                // 随机获取一条轨道
+                let track = distances[parseInt(randomNum(0, distances.length - 1), 10)];
+
+                // 轨道半径
+                let radius = track.radius;
+
+                // 随机一个角度
+                let angle = randomNum(0, Math.PI * 2);
+
+                if (angle > Math.PI * radius) {
+                    angle -= Math.PI * radius;
+                }
+
+                let x = radius * Math.sin(angle);
+                let y = radius * Math.cos(angle);
+
+                return [x, y, track.z];
+            }
+
+            // 根据data渲染球体
+            let allSpheres = [];
+            function getSphere (children) {
+                children.forEach(item => {
+                    let sphere = {};
+
+                    switch (item.status) {
+                        case 1:
+                            sphere = getYellowSphere(scene);
+                            break;
+
+                        case 2:
+                            sphere = getBlueSphere(scene);
+                            // let sphereObject = getNbSphere(scene);
+                            // allSpheres.push(sphereObject);
+
+                            // sphere = sphereObject.group;
+                            sphere.position.set(...randomPostion());
+                            break;
+                            case 3:
+                            sphere = getDarkSphere(scene);
+                            break;
+                        default:
+                    }
+
+                    let secondChildren = item?.children || [];
+
+                    let randomZPos = randomNum(5, 8),
+                        childSphereDistance = randomNum(2, 5);
+
+                    secondChildren.forEach(secondItem => {
+                        let childTrack = getTrack(childSphereDistance, scene, false);
+                        childTrack.position.set(sphere.position.x, sphere.position.y, randomZPos);
+                        
+                        // 轨道半径
+                        let radius = childTrack.geometry.parameters.innerRadius;
+
+                        // 随机一个角度
+                        let angle = randomNum(0, Math.PI * 2);
+
+                        if (angle > Math.PI * radius) {
+                            angle -= Math.PI * radius;
+                        }
+
+                        let x = radius * Math.sin(angle) + sphere.position.x;
+                        let y = radius * Math.cos(angle) + sphere.position.y;
+
+                        let childDarkSphere = getDarkSphere(scene);
+                        childDarkSphere.position.set(x, y, randomZPos);
+
+                        getCubicBezierLine(scene, sphere, childDarkSphere);
+                    });
+                });
+            }
+
+
+            getSphere (data.children);
+
+            // GUI
+            var gui = new dat.GUI();
+            gui.add(controls, 'sphereRotation', 0, 5);
+            gui.addColor(controls, 'ambientLight').onChange(e => {
+                ambientLight.color = new THREE.Color(e);
+            })
+            let time = new THREE.Clock();
+
+            render();
+
+            function render() {
+                stats.update();
+                orbitControls.update();
+
+                scene.rotation.x = controls.sphereRotation;
+
+                requestAnimationFrame(render);
+                renderer.render(scene, camera);
+            }
+
+            function initStats() {
+
+                var stats = new Stats();
+
+                stats.setMode(0); // 0: fps, 1: ms
+
+                // Align top-left
+                stats.domElement.style.position = 'absolute';
+                stats.domElement.style.left = '0px';
+                stats.domElement.style.top = '0px';
+
+                document.getElementById("Stats-output").appendChild(stats.domElement);
+
+                return stats;
+            }
+        }
+
+        window.onload = init;
+
+    </script>
+</body>
+
+</html>               
