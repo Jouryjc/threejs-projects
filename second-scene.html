@@ -46,7 +46,7 @@
 
     <script type="module">
         import data from './data2.js';
-        import { getNbSphere } from './sphere/index.js';
+        // import { getNbSphere } from './sphere/index.js';
 
         let windowInnerWidth = window.innerWidth,
             windowInnerHeight = window.innerHeight;
@@ -196,7 +196,6 @@
                 item.radius = track.geometry.parameters.innerRadius;
             });
 
-
             function randomPostion () {
 
                 // 随机获取一条轨道
@@ -220,9 +219,13 @@
 
             // 根据data渲染球体
             let allSpheres = [];
+            let groupObj = {};
+
             function getSphere (children) {
                 children.forEach(item => {
                     let sphere = {};
+                    let group = new THREE.Group();
+                    let sphereName = item.name;
 
                     switch (item.status) {
                         case 1:
@@ -231,10 +234,7 @@
 
                         case 2:
                             sphere = getBlueSphere(scene);
-                            // let sphereObject = getNbSphere(scene);
-                            // allSpheres.push(sphereObject);
-
-                            // sphere = sphereObject.group;
+                            sphere.name = sphereName;
                             sphere.position.set(...randomPostion());
                             break;
                             case 3:
@@ -243,12 +243,15 @@
                         default:
                     }
 
-                    let secondChildren = item?.children || [];
+                    // 创建孩子结点
+                    let secondChildren = item?.children || [],
+                        secondChildrenLen = secondChildren.length,
+                        perAngle = Math.PI * 2 / secondChildrenLen;
 
                     let randomZPos = randomNum(5, 8),
                         childSphereDistance = randomNum(2, 5);
 
-                    secondChildren.forEach(secondItem => {
+                    secondChildren.forEach((secondItem, index) => {
                         let childTrack = getTrack(childSphereDistance, scene, false);
                         childTrack.position.set(sphere.position.x, sphere.position.y, randomZPos);
                         
@@ -256,7 +259,7 @@
                         let radius = childTrack.geometry.parameters.innerRadius;
 
                         // 随机一个角度
-                        let angle = randomNum(0, Math.PI * 2);
+                        let angle = index * perAngle;
 
                         if (angle > Math.PI * radius) {
                             angle -= Math.PI * radius;
@@ -268,13 +271,47 @@
                         let childDarkSphere = getDarkSphere(scene);
                         childDarkSphere.position.set(x, y, randomZPos);
 
+                        group.add(childDarkSphere);
+
                         getCubicBezierLine(scene, sphere, childDarkSphere);
                     });
+                
+                    groupObj[sphereName] = group;
+
+                    scene.add(group);
                 });
             }
 
 
             getSphere (data.children);
+
+
+            window.addEventListener('click', onClick, false);
+
+            var raycaster = new THREE.Raycaster();
+            var mouse = new THREE.Vector2();
+
+            function onClick(event) {
+
+                // 将鼠标位置归一化为设备坐标。x 和 y 方向的取值范围是 (-1 to +1)
+
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+
+                // 通过摄像机和鼠标位置更新射线
+                raycaster.setFromCamera(mouse, camera);
+
+                // 计算物体和射线的焦点
+                var intersects = raycaster.intersectObjects(scene.children);
+                console.log(intersects);
+
+                for (var i = 0; i < intersects.length; i++) {
+
+                    // intersects[i].object.material.color.set(0xff0000);
+
+                }
+
+            }
 
             // GUI
             var gui = new dat.GUI();
