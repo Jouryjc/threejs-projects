@@ -45,6 +45,7 @@
     </div>
 
     <script type="module">
+        import TWEEN from './libs/tween.esm.js';
         import data from './data2.js';
         // import { getNbSphere } from './sphere/index.js';
 
@@ -104,14 +105,14 @@
          */
         function getCubicBezierLine (scene, parentSphere, childSphere) {
             let middle = [
-                (parentSphere.position.x + childSphere.position.x)/2,
+                parentSphere.position.x,
                 (parentSphere.position.y + childSphere.position.y)/2,
                 (parentSphere.position.z + childSphere.position.z)/2
             ]
             let curve = new THREE.CubicBezierCurve3(
                 parentSphere.position,
-                new THREE.Vector3((parentSphere.position.x + childSphere.position.x)/2, parentSphere.position.y , childSphere.position.z),
                 new THREE.Vector3(...middle),
+                new THREE.Vector3(childSphere.position.x, (parentSphere.position.y + childSphere.position.y) / 2, (parentSphere.position.z + childSphere.position.z) / 2),
                 childSphere.position
             );
             let points = curve.getPoints( 50 );
@@ -127,6 +128,8 @@
 
             let line = new THREE.Line(geometry, material);
             scene.add(line);
+
+            return line;
         }
 
         function init() {
@@ -155,8 +158,8 @@
             };
 
 
-            // var axesHelper = new THREE.AxesHelper( 10 );
-            // scene.add( axesHelper );
+            var axesHelper = new THREE.AxesHelper( 10 );
+            scene.add( axesHelper );
 
             // 环境光
             var ambientLight = new THREE.AmbientLight(controls.ambientLight); // soft white light
@@ -248,8 +251,8 @@
                         secondChildrenLen = secondChildren.length,
                         perAngle = Math.PI * 2 / secondChildrenLen;
 
-                    let randomZPos = randomNum(5, 8),
-                        childSphereDistance = randomNum(2, 5);
+                    let randomZPos = 3,
+                        childSphereDistance = 2;
 
                     secondChildren.forEach((secondItem, index) => {
                         let childTrack = getTrack(childSphereDistance, scene, false);
@@ -273,7 +276,7 @@
 
                         group.add(childDarkSphere);
 
-                        getCubicBezierLine(scene, sphere, childDarkSphere);
+                        group.add(getCubicBezierLine(scene, sphere, childDarkSphere));
                     });
                 
                     groupObj[sphereName] = group;
@@ -288,8 +291,8 @@
 
             window.addEventListener('click', onClick, false);
 
-            var raycaster = new THREE.Raycaster();
-            var mouse = new THREE.Vector2();
+            let raycaster = new THREE.Raycaster();
+            let mouse = new THREE.Vector2();
 
             function onClick(event) {
 
@@ -302,14 +305,31 @@
                 raycaster.setFromCamera(mouse, camera);
 
                 // 计算物体和射线的焦点
-                var intersects = raycaster.intersectObjects(scene.children);
-                console.log(intersects);
+                let intersects = raycaster.intersectObjects(scene.children);
+                let clickGroup = groupObj[intersects[0]?.object.name];
 
-                for (var i = 0; i < intersects.length; i++) {
-
-                    // intersects[i].object.material.color.set(0xff0000);
-
+                if (clickGroup) {
+                    // 整体隐藏球体跟线条
+                    clickGroup.visible = !clickGroup?.visible;
+                    // debugger;
                 }
+
+                // let children = groupObj[intersects[0].object.name].children;
+                // children.forEach((item, index) => {
+                //     // let startPosition = item.position;
+
+                //     // // 首先为位置创建一个补间(tween)
+                //     // var tween = new TWEEN.Tween(startPosition);
+
+                //     // // 然后告诉 tween 我们想要在1000毫秒内以动画的形式移动 x 的位置
+                //     // tween.to(children[index+1].position, 1000).start();
+                // });
+
+                // for (var i = 0; i < intersects.length; i++) {
+
+                //     // intersects[i].object.material.color.set(0xff0000);
+                    
+                // }
 
             }
 
@@ -326,6 +346,7 @@
             function render() {
                 stats.update();
                 orbitControls.update();
+                TWEEN.update();
 
                 scene.rotation.x = controls.sphereRotation;
 
