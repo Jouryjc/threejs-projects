@@ -2,7 +2,7 @@ export default {
     name: 'root',
     status: 0,
     children: [{
-        name: '南京分支',
+        name: 'nanjing',
         status: 2,
         children: [{
             name: '2-1-1',
@@ -42,62 +42,6 @@ export default {
             children: [] 
         }, {
             name: '2-1-5',
-            status: 3,
-            children: [] 
-        }]
-    }, {
-        name: '2-1',
-        status: 2,
-        children: [{
-            name: '2-1-1',
-            status: 3,
-            children: [] 
-        }, {
-            name: '2-1-2',
-            status: 3,
-            children: [] 
-        }, {
-            name: '2-1-3',
-            status: 3,
-            children: [] 
-        }, {
-            name: '2-1-4',
-            status: 3,
-            children: [] 
-        }, {
-            name: '2-1-5',
-            status: 3,
-            children: [] 
-        }]
-    }, {
-        name: '2-2',
-        status: 2,
-        children: [{
-            name: '2-2-1',
-            status: 3,
-            children: [] 
-        }, {
-            name: '2-2-2',
-            status: 3,
-            children: [] 
-        }, {
-            name: '2-2-3',
-            status: 3,
-            children: [] 
-        }, {
-            name: '2-2-4',
-            status: 3,
-            children: [] 
-        }, {
-            name: '2-2-5',
-            status: 3,
-            children: [] 
-        }, {
-            name: '2-2-6',
-            status: 3,
-            children: [] 
-        }, {
-            name: '2-2-7',
             status: 3,
             children: [] 
         }]

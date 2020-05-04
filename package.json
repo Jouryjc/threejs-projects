@@ -1,0 +1,11 @@
+{
+  "name": "threejs-projects",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/Jouryjc/threejs-projects.git",
+  "author": "Jouryjc <494208562@qq.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "d3": "^5.16.0"
+  }
+}

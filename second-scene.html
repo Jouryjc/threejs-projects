@@ -52,6 +52,11 @@
         let windowInnerWidth = window.innerWidth,
             windowInnerHeight = window.innerHeight;
 
+        let clickGroup = null,
+            currentChildTrack = null,
+            rotateAxis = null,
+            axesHelper = null;
+
         function randomNum(min = 0, max = 20) {
             return Math.floor(Math.random() * (max - min + 1) + min);
         }
@@ -103,11 +108,11 @@
          * @param {Object} parentSphere - 父元素球体
          * @param {Object} childSphere - 子元素球体
          */
-        function getCubicBezierLine (scene, parentSphere, childSphere) {
+        function getCubicBezierLine(scene, parentSphere, childSphere) {
             let middle = [
                 parentSphere.position.x,
-                (parentSphere.position.y + childSphere.position.y)/2,
-                (parentSphere.position.z + childSphere.position.z)/2
+                (parentSphere.position.y + childSphere.position.y) / 2,
+                (parentSphere.position.z + childSphere.position.z) / 2
             ]
             let curve = new THREE.CubicBezierCurve3(
                 parentSphere.position,
@@ -115,8 +120,8 @@
                 new THREE.Vector3(childSphere.position.x, (parentSphere.position.y + childSphere.position.y) / 2, (parentSphere.position.z + childSphere.position.z) / 2),
                 childSphere.position
             );
-            let points = curve.getPoints( 50 );
-            let geometry = new THREE.BufferGeometry().setFromPoints( points );
+            let points = curve.getPoints(50);
+            let geometry = new THREE.BufferGeometry().setFromPoints(points);
 
             let material = new THREE.LineBasicMaterial({
                 color: 0x0621e6,
@@ -155,11 +160,14 @@
             var controls = new function () {
                 this.ambientLight = 0x062ee8;
                 this.sphereRotation = 1.9;
+                this.rotationX = 0;
+                this.rotationY = 0;
+                this.rotationZ = 0.002;
             };
 
 
-            var axesHelper = new THREE.AxesHelper( 10 );
-            scene.add( axesHelper );
+            axesHelper = new THREE.AxesHelper(10);
+            scene.add(axesHelper);
 
             // 环境光
             var ambientLight = new THREE.AmbientLight(controls.ambientLight); // soft white light
@@ -193,13 +201,14 @@
                 z: -4
             }];
 
+            // 三条轨迹
             distances.forEach(item => {
                 let track = getTrack(item.x, scene);
                 track.position.z = item.z;
                 item.radius = track.geometry.parameters.innerRadius;
             });
 
-            function randomPostion () {
+            function randomPostion() {
 
                 // 随机获取一条轨道
                 let track = distances[parseInt(randomNum(0, distances.length - 1), 10)];
@@ -224,7 +233,10 @@
             let allSpheres = [];
             let groupObj = {};
 
-            function getSphere (children) {
+            // 保存子节点的ringGeometry
+            let childrenTrack = {};
+
+            function getSphere(children) {
                 children.forEach(item => {
                     let sphere = {};
                     let group = new THREE.Group();
@@ -239,8 +251,9 @@
                             sphere = getBlueSphere(scene);
                             sphere.name = sphereName;
                             sphere.position.set(...randomPostion());
+                            // sphere.position.set(0,0,0);
                             break;
-                            case 3:
+                        case 3:
                             sphere = getDarkSphere(scene);
                             break;
                         default:
@@ -255,9 +268,12 @@
                         childSphereDistance = 2;
 
                     secondChildren.forEach((secondItem, index) => {
+
+                        // 子节点布局的圆环
                         let childTrack = getTrack(childSphereDistance, scene, false);
                         childTrack.position.set(sphere.position.x, sphere.position.y, randomZPos);
-                        
+                        childrenTrack[sphereName] = childTrack;
+
                         // 轨道半径
                         let radius = childTrack.geometry.parameters.innerRadius;
 
@@ -274,11 +290,13 @@
                         let childDarkSphere = getDarkSphere(scene);
                         childDarkSphere.position.set(x, y, randomZPos);
 
+                        // 子节点入组
                         group.add(childDarkSphere);
 
+                        // 添加子节点的贝塞尔曲线
                         group.add(getCubicBezierLine(scene, sphere, childDarkSphere));
                     });
-                
+
                     groupObj[sphereName] = group;
 
                     scene.add(group);
@@ -286,7 +304,7 @@
             }
 
 
-            getSphere (data.children);
+            getSphere(data.children);
 
 
             window.addEventListener('click', onClick, false);
@@ -305,14 +323,39 @@
                 raycaster.setFromCamera(mouse, camera);
 
                 // 计算物体和射线的焦点
-                let intersects = raycaster.intersectObjects(scene.children);
-                let clickGroup = groupObj[intersects[0]?.object.name];
+                let intersects = raycaster.intersectObjects(scene.children),
+                    obj = intersects[0]?.object;
 
-                if (clickGroup) {
-                    // 整体隐藏球体跟线条
-                    clickGroup.visible = !clickGroup?.visible;
-                    // debugger;
+                if (obj?.name) {
+                    clickGroup = groupObj[obj.name];
+
+                    currentChildTrack = childrenTrack[obj.name];
+
+                    // rotateAxis = new THREE.Vector4(
+                    //     childTrack.position.x - obj.position.x, 
+                    //     childTrack.position.y - obj.position.y, 
+                    //     childTrack.position.z - obj.position.z,
+                    //     1
+                    // );
+                    
+
+                    // var m = new THREE.Matrix4();
+                    // m.makeTranslation(obj.position.x, obj.position.y, 0);
+                    // m.set( 1, 0, 0, 0,
+                    //        0, 1, 0, 0,
+                    //        0, 0, 1, 0,
+                    //        obj.position.x, obj.position.y, rotateAxis.z, 1 );
+
+                    // rotateAxis = rotateAxis.premultiply(m);
+
+                    axesHelper.position.set(obj.position.x, obj.position.y, obj.position.z);
                 }
+
+                // if (clickGroup) {
+                // 整体隐藏球体跟线条
+                // clickGroup.visible = !clickGroup?.visible;
+                // debugger;
+                // }
 
                 // let children = groupObj[intersects[0].object.name].children;
                 // children.forEach((item, index) => {
@@ -328,7 +371,7 @@
                 // for (var i = 0; i < intersects.length; i++) {
 
                 //     // intersects[i].object.material.color.set(0xff0000);
-                    
+
                 // }
 
             }
@@ -338,7 +381,14 @@
             gui.add(controls, 'sphereRotation', 0, 5);
             gui.addColor(controls, 'ambientLight').onChange(e => {
                 ambientLight.color = new THREE.Color(e);
-            })
+            });
+
+            var guiRotation = gui.addFolder('group-rotation');
+            guiRotation.add(controls, 'rotationX', 0, 5);
+            guiRotation.add(controls, 'rotationY', 0, 5);
+            guiRotation.add(controls, 'rotationZ', 0, 5);
+            guiRotation.open();
+
             let time = new THREE.Clock();
 
             render();
@@ -347,6 +397,23 @@
                 stats.update();
                 orbitControls.update();
                 TWEEN.update();
+
+                if (clickGroup) {
+                    clickGroup.children.forEach(item => {
+                        if (item instanceof THREE.Mesh) {
+                            let startPosition = item.position;
+
+                            // 首先为位置创建一个补间(tween)
+                            var tween = new TWEEN.Tween(startPosition);
+                            tween.to(currentChildTrack.position, 200).start();
+                        }
+                    })
+                    // clickGroup.rotateOnAxis(new THREE.Vector3(rotateAxis.x, rotateAxis.y, rotateAxis.z), controls.rotationZ);
+                    // clickGroup.rotation.x += controls.rotationX;
+                    // clickGroup.rotation.y += controls.rotationY;
+                    // clickGroup.rotation.z += controls.rotationZ;
+
+                }
 
                 scene.rotation.x = controls.sphereRotation;
 
@@ -376,4 +443,4 @@
     </script>
 </body>
 
-</html>               
+</html>

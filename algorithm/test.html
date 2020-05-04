@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Force Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="forceMap" width="800" height="800"></canvas>
+    <script type="text/javascript" src="../libs/three.js"></script>
+    <script type="text/javascript" src="../libs/TrackballControls.js"></script>
+    <script type="module">
+        import Force from './force/Force.js';
+        import data from './force/data.js';
+
+        window.onload = function () {
+            let windowInnerWidth = window.innerWidth;
+            let windowInnerHeight = window.innerHeight;
+
+            const canvas = document.getElementById('forceMap');
+            const ctx = canvas.getContext('2d');
+
+            let graph = new Force({
+                onTick(nodePoints, edgeSprings) {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    edgeSprings.forEach(function (val, key, map) {
+                        drawEdge(key, val);
+                    });
+
+                    nodePoints.forEach(function (val, key, map) {
+                        drawNode(key, val);
+                    });
+                }
+            });
+
+
+            graph.setData(data);
+            graph.execute();
+
+            let nodePoints = graph.nodePoints,
+                edgeSprings = graph.edgeSprings;
+
+            
+
+            function drawEdge(key, val) {
+                let source = val.source,
+                    target = val.target,
+                    strokeStyle = 'rgb(100,100,100)',
+                    strokeWidth = Math.sqrt(val.length) * 0.1;
+
+                ctx.strokeStyle = strokeStyle;
+                ctx.lineWidth = strokeWidth;
+                ctx.beginPath();
+                ctx.moveTo(source.position.x, source.position.y);
+                ctx.lineTo(target.position.x, target.position.y);
+                ctx.stroke();
+            }
+
+            function color(n) {
+                let schemas = ["#3366cc", "#dc3912", "#ff9900", "#109618", "#990099", "#0099c6", "#dd4477", "#66aa00", "#b82e2e", "#316395", "#994499", "#22aa99", "#aaaa11", "#6633cc", "#e67300", "#8b0707", "#651067", "#329262", "#5574a6", "#3b3eac"];
+
+                return schemas[n % schemas.length];
+            }
+
+            function drawNode(key, val) {
+                let fillStyle = color(val.group),
+                    strokeStyle = 'rgb(255,255,255)',
+                    r = 5,
+                    lineWidth = 1;
+
+                ctx.strokeStyle = strokeStyle;
+                ctx.fillStyle = fillStyle;
+                ctx.lineWidth = lineWidth;
+                ctx.beginPath();
+                ctx.arc(val.position.x, val.position.y, r, 0, 2 * Math.PI);
+                ctx.stroke();
+                ctx.fill();
+            }
+        }
+
+        /* function init() {
+            var scene = new THREE.Scene();
+            var windowInnerWidth = window.innerWidth;
+            var windowInnerHeight = window.innerHeight;
+
+            var renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setClearColor(0x2C3158);
+            renderer.setSize(windowInnerWidth, windowInnerHeight);
+            document.getElementById("forceMap").appendChild(renderer.domElement);
+
+            var camera = new THREE.PerspectiveCamera(45, windowInnerWidth / windowInnerHeight, 1, 1000);
+            camera.position.x = 0;
+            camera.position.y = 0;
+            camera.position.z = 1000;
+            scene.add(camera);
+
+            nodePoints.forEach(function (val, key) {
+                console.log(val.position);
+                getDarkSphere(val);
+            });
+
+            edgeSprings.forEach(function (val, key) {
+                let material = new THREE.LineBasicMaterial({ color: 0x2C3158, linewidth: 1 });
+                let geometry = new THREE.Geometry();
+
+                let sourcePos = new THREE.Vector3(val.source.position.x, val.source.position.y, 0),
+                    targetPos = new THREE.Vector3(val.target.position.x, val.target.position.y, 0);
+
+                geometry.vertices.push(sourcePos);
+                geometry.vertices.push(targetPos);
+                let line = new THREE.Line(geometry, material);
+                scene.add(line);
+            });
+
+            function getDarkSphere(nodes) {
+                let sphereGeometry = new THREE.SphereGeometry(1, 15, 15);
+                let sphereMaterial = new THREE.MeshLambertMaterial({
+                    color: 0x1c256f
+                });
+
+                let sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+
+                let position = new THREE.Vector3(nodes.position.x, nodes.position.y, -1).unproject(camera)
+                sphere.position.set(position.x, position.y, 0);
+
+                scene.add(sphere);
+
+                return sphere;
+            }
+
+            function render() {
+                requestAnimationFrame(render);
+                renderer.render(scene, camera);
+            }
+
+            render();
+        }
+
+        window.onload = init; */
+
+    </script>
+</body>
+
+</html>
